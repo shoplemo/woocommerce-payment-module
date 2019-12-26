@@ -152,7 +152,7 @@ function WooCommerce_Shoplemo()
             $requestBody = [
                 'user_email' => $order->get_billing_email(),
                 'buyer_details' => [
-                    'ip' => '188.119.19.5', //$order->get_customer_ip_address(),
+                    'ip' => $order->get_customer_ip_address(),
                     'port' => $_SERVER['REMOTE_PORT'],
                     'city' => $order->get_billing_city(),
                     'country' => $order->get_billing_country(),
@@ -189,7 +189,6 @@ function WooCommerce_Shoplemo()
                 'user_message' => $order->get_customer_note(),
                 'redirect_url' => $order->get_checkout_order_received_url(),
                 'fail_redirect_url' => $order->get_cancel_order_url(),
-                'callback_url' => str_replace('http://shoplemo.test/wordpress/', 'http://db4fdec7.eu.ngrok.io/wordpress/', $this->getCallbackUrl()),
             ];
 
             $requestBody = json_encode($requestBody);
@@ -265,8 +264,7 @@ function WooCommerce_Shoplemo()
                 die('Shoplemo.com');
             }
 
-            $_data = json_decode($_POST['data'], true);
-
+            $_data = json_decode(stripslashes($_POST['data']), true);
             $hash = base64_encode(hash_hmac('sha256', $_data['progress_id'] . implode('|', $_data['payment']) . $this->get_option('api_key'), $this->get_option('api_secret'), true));
 
             if ($hash != $_data['hash'])
@@ -277,7 +275,7 @@ function WooCommerce_Shoplemo()
             $custom_params = json_decode($_data['custom_params']);
             $order_id = $custom_params->order_id;
             $order = new WC_Order($order_id);
-            if ($order->get_status() != 'pending' && $order->get_status() != 'unpaid')
+            if ($order->get_status() != 'processing' || $order->get_status() != 'completed')
             {
                 if ($_POST['status'] == 'success')
                 {
@@ -291,7 +289,7 @@ function WooCommerce_Shoplemo()
             }
             else
             {
-                die('Shoplemo: Unexpected order status: ' . $order->get_status() . ' - Expected order status: pending OR unpaid');
+                die('Shoplemo: Unexpected order status: ' . $order->get_status() . ' - Expected order status: processing OR completed');
             }
 
             die('OK');
