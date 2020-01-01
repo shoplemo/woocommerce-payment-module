@@ -166,14 +166,6 @@ function WooCommerce_Shoplemo()
                     'discount_price' => (int) (number_format($order->get_discount_total(), 2, '.', '') * 100),
                     'items' => $orderItems,
                 ],
-                'shipping_details' => [
-                    'full_name' => $order->get_formatted_shipping_full_name(),
-                    'phone' => $order->get_billing_phone(),
-                    'address' => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2() . ' ' . $order->get_shipping_state(),
-                    'city' => $order->get_shipping_city(),
-                    'country' => $order->get_shipping_country(),
-                    'postalcode' => $order->get_shipping_postcode(),
-                ],
                 'billing_details' => [
                     'full_name' => $order->get_formatted_billing_full_name(),
                     'phone' => $order->get_billing_phone(),
@@ -190,6 +182,22 @@ function WooCommerce_Shoplemo()
                 'redirect_url' => $order->get_checkout_order_received_url(),
                 'fail_redirect_url' => $order->get_cancel_order_url(),
             ];
+
+            if ($order->has_shipping_address())
+            {
+                $requestBody['shipping_details'] = [
+                    'full_name' => $order->get_formatted_shipping_full_name() == '' ? $order->get_formatted_shipping_full_name() : $order->get_formatted_billing_full_name(),
+                    'phone' => $order->get_billing_phone(),
+                    'address' => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2() . ' ' . $order->get_shipping_state(),
+                    'city' => $order->get_shipping_city(),
+                    'country' => $order->get_shipping_country(),
+                    'postalcode' => $order->get_shipping_postcode(),
+                ];
+            }
+            else
+            {
+                $requestBody['shipping_details'] = $requestBody['billing_details'];
+            }
 
             $requestBody = json_encode($requestBody);
             if (function_exists('curl_version'))
