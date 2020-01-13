@@ -1,8 +1,8 @@
 <?php
 /*
- * Plugin Name: Shoplemo WooCommerce Ödeme Modülü
+ * Plugin Name: Shoplemo Checkout Modülü for WooCommerce
  * Plugin URI: http://www.shoplemo.com
- * Description: Shoplemo aracılığıyla WooCommerce üzerinden satış yapmak için kullanabileceğiniz Ödeme Modülü
+ * Description: Shoplemo aracılığıyla WooCommerce üzerinden satış yapmak için kullanabileceğiniz modül
  * Version: 1.0.0
  * Author: revoland
  * Author URI: https://github.com/RevoLand
@@ -17,13 +17,19 @@ define('SHOPLEMO_VERSION', '1.0.0');
 define('SHOPLEMO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 
 add_action('plugins_loaded', 'WooCommerce_Shoplemo');
-add_filter('woocommerce_payment_gateways', 'init_woocommerce');
+add_action('wp_enqueue_scripts', 'shoplemo_init_scripts');
+add_filter('woocommerce_payment_gateways', 'shoplemo_init_woocommerce');
 
-function init_woocommerce()
+function shoplemo_init_woocommerce()
 {
     $methods[] = 'Shoplemo';
 
     return $methods;
+}
+
+function shoplemo_init_scripts()
+{
+    wp_enqueue_script('shoplemo_custom_js', 'https://payment.shoplemo.com/assets/js/shoplemo.js');
 }
 
 function WooCommerce_Shoplemo()
@@ -39,18 +45,18 @@ function WooCommerce_Shoplemo()
             $this->method_description = 'Shoplemo sistemi üzerinden alışverişinizi tamamlayabilirsiniz.';
             $this->order_button_text = __('Shoplemo\'ya ilerle', 'woocommerce');
 
-            $this->init_form_fields();
+            $this->shoplemo_init_form_fields();
             $this->init_settings();
             $this->title = $this->get_option('title');
-            $this->api_key = trim($this->get_option('shoplemo_api_key'));
-            $this->api_secret = trim($this->get_option('shoplemo_api_secret'));
+            $this->shoplemo_api_key = trim($this->get_option('shoplemo_api_key'));
+            $this->shoplemo_api_secret = trim($this->get_option('shoplemo_api_secret'));
 
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
-            add_action('woocommerce_receipt_' . $this->id, [$this, 'receipt_page']);
+            add_action('woocommerce_receipt_' . $this->id, [$this, 'shoplemo_receipt_page']);
             add_action('woocommerce_api_shoplemo', [$this, 'shoplemo_response']);
         }
 
-        public function init_form_fields()
+        public function shoplemo_init_form_fields()
         {
             $this->form_fields = [
                 'enabled' => [
@@ -62,16 +68,16 @@ function WooCommerce_Shoplemo()
                 'title' => [
                     'title' => __('Ödeme Yöntemi İsmi', 'woocommerce'),
                     'type' => 'text',
-                    'description' => __('This controls the title which the user sees during checkout.', 'woocommerce'),
+                    'description' => __('Ödeme sırasında gösterilecek olan ödeme yöntemi ismi.', 'woocommerce'),
                     'default' => __('Shoplemo', 'woocommerce'),
                     'desc_tip' => true,
                 ],
-                'api_key' => [
+                'shoplemo_api_key' => [
                     'title' => __('Shoplemo Mağaza API Anahtarı', 'woocommerce'),
                     'type' => 'text',
                     'default' => '',
                 ],
-                'api_secret' => [
+                'shoplemo_api_secret' => [
                     'title' => __('Shoplemo Mağaza API Secret', 'woocommerce'),
                     'type' => 'text',
                     'default' => '',
@@ -117,7 +123,7 @@ function WooCommerce_Shoplemo()
             ];
         }
 
-        public function receipt_page($order_id)
+        public function shoplemo_receipt_page($order_id)
         {
             $order = new WC_Order($order_id);
 
@@ -200,68 +206,48 @@ function WooCommerce_Shoplemo()
             }
 
             $requestBody = json_encode($requestBody);
-            if (function_exists('curl_version'))
-            {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, 'https://payment.shoplemo.com/paywith/credit_card');
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $requestBody);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 90);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 90);
-                curl_setopt($ch, CURLOPT_SSLVERSION, 6);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Content-Type: application/json',
-                    'Content-Length: ' . strlen($requestBody),
-                    'Authorization: Basic ' . base64_encode($this->get_option('api_key') . ':' . $this->get_option('api_secret')),
-                ]);
-                $result = @curl_exec($ch);
 
-                if (curl_errno($ch))
-                {
-                    die('Shoplemo connection error. Details: ' . curl_error($ch));
-                }
+            $args = [
+                'timeout' => '90',
+                'redirection' => '5',
+                'httpversion' => '1.0',
+                'blocking' => true,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Content-Length' => strlen($requestBody),
+                    'Authorization' => 'Basic ' . base64_encode($this->get_option('shoplemo_api_key') . ':' . $this->get_option('shoplemo_api_secret')),
+                ],
+                'body' => $requestBody,
+            ];
 
-                curl_close($ch);
-                try
-                {
-                    $result = json_decode($result, 1);
-                }
-                catch (Exception $ex)
-                {
-                    return 'Failed to handle response';
-                }
-            }
-            else
+            $result = wp_remote_retrieve_body(wp_remote_post('https://payment.shoplemo.com/paywith/credit_card', $args));
+
+            try
             {
-                echo 'CURL fonksiyonu yüklü değil?';
+                $result = json_decode($result, 1);
             }
+            catch (Exception $ex)
+            {
+                return 'Failed to handle response';
+            }
+
             if ($result['status'] == 'success')
             {
                 ?>
-            <div id="shoplemo-area">
-                <script src="https://payment.shoplemo.com/assets/js/shoplemo.js"></script>
-                <iframe src="<?php echo $result['url']; ?>" id="shoplemoiframe" frameborder="0" scrolling="no" style="width: 100%;"></iframe>
+                <div id="shoplemo-area">
+                    <iframe src="<?php echo $result['url']; ?>" id="shoplemoiframe" frameborder="0" scrolling="no" style="width: 100%;"></iframe>
 
-                <script type="text/javascript">
-
-                setTimeout(function(){ 
-                    iFrameResize({ log: true },'#shoplemoiframe');
-                }, 1000);
-
-                </script>
-            </div>
+                    <script type="text/javascript">
+                    setTimeout(function(){ 
+                        iFrameResize({ log: true },'#shoplemoiframe');
+                    }, 1000);
+                    </script>
+                </div>
         <?php
             }
             else
             {
-                foreach ($result['details'] as $detail)
-                {
-                    echo "- {$detail} <br />";
-                }
+                echo $result['details'];
             }
         }
 
@@ -273,7 +259,7 @@ function WooCommerce_Shoplemo()
             }
 
             $_data = json_decode(stripslashes($_POST['data']), true);
-            $hash = base64_encode(hash_hmac('sha256', $_data['progress_id'] . implode('|', $_data['payment']) . $this->get_option('api_key'), $this->get_option('api_secret'), true));
+            $hash = base64_encode(hash_hmac('sha256', $_data['progress_id'] . implode('|', $_data['payment']) . $this->get_option('shoplemo_api_key'), $this->get_option('shoplemo_api_secret'), true));
 
             if ($hash != $_data['hash'])
             {
