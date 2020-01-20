@@ -239,7 +239,7 @@ function WooCommerce_Shoplemo()
 
                     <script type="text/javascript">
                     setTimeout(function(){ 
-                        iFrameResize({ log: true },'#shoplemoiframe');
+                        iFrameResize({},'#shoplemoiframe');
                     }, 1000);
                     </script>
                 </div>
