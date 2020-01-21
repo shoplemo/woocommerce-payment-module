@@ -271,7 +271,7 @@ function WooCommerce_Shoplemo()
             $order = new WC_Order($order_id);
             if ($order->get_status() != 'processing' || $order->get_status() != 'completed')
             {
-                if ($_POST['status'] == 'success')
+                if ($_data['payment']['payment_status'] == 'COMPLETED')
                 {
                     $order->payment_complete();
                     $order->add_order_note('Ödeme onaylandı.<br />## Shoplemo ##<br /># Müşteri Ödeme Tutarı: ' . $_data['payment']['paid_price'] . '<br/># Shoplemo Id: ' . $_data['progress_id'] . '<br/># Sipariş numarası: ' . $order_id);
