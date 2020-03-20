@@ -3,7 +3,7 @@
  * Plugin Name: Shoplemo Checkout Modülü for WooCommerce
  * Plugin URI: http://www.shoplemo.com
  * Description: Shoplemo aracılığıyla WooCommerce üzerinden satış yapmak için kullanabileceğiniz modül
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: revoland
  * Author URI: https://github.com/RevoLand
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH'))
     exit;
 }
 
-define('SHOPLEMO_VERSION', '1.0.0');
+define('SHOPLEMO_VERSION', '1.0.1');
 define('SHOPLEMO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 
 add_action('plugins_loaded', 'WooCommerce_Shoplemo');
@@ -220,7 +220,14 @@ function WooCommerce_Shoplemo()
                 'body' => $requestBody,
             ];
 
-            $result = wp_remote_retrieve_body(wp_remote_post('https://payment.shoplemo.com/paywith/credit_card', $args));
+            $response = wp_remote_post('https://payment.shoplemo.com/paywith/credit_card', $args);
+
+            if (is_wp_error($response))
+            {
+                return 'Failed to handle response. Error: ' . $response->get_error_message();
+            }
+
+            $result = wp_remote_retrieve_body($response);
 
             try
             {
