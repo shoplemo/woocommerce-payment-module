@@ -3,7 +3,7 @@
  * Plugin Name: Shoplemo Checkout Modülü for WooCommerce
  * Plugin URI: http://www.shoplemo.com
  * Description: Shoplemo aracılığıyla WooCommerce üzerinden satış yapmak için kullanabileceğiniz modül
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: revoland
  * Author URI: https://github.com/RevoLand
  */
@@ -13,8 +13,8 @@ if (!defined('ABSPATH'))
     exit;
 }
 
-define('SHOPLEMO_VERSION', '1.0.1');
-define('SHOPLEMO_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('SHOPLEMO_VERSION', '1.0.2');
+define('SHOPLEMO_PLUGIN_DIR', plugin_dir_url(__FILE__));
 
 add_action('plugins_loaded', 'WooCommerce_Shoplemo');
 add_action('wp_enqueue_scripts', 'shoplemo_init_scripts');
